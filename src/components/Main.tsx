@@ -8,23 +8,26 @@ import axios from "axios";
 export const Main = () => {
   const [isWalletInstalled, setIsWalletInstalled] = useState<boolean>(false);
   const [account, setAccount] = useState<string | null>(null);
+  const [message, setMessage] = useState<string>("Message to sign");
+
   useEffect(() => {
     if ((window as any).ethereum) {
       setIsWalletInstalled(true);
     }
   }, []);
 
-  async function sign(params: any) {
+  async function sign(nonce: string) {
     const provider = new ethers.providers.Web3Provider(
       (window as any).ethereum
     );
 
     const signer = provider.getSigner();
-    const signature = await signer.signMessage(params.message);
+    const signature = await signer.signMessage(nonce);
+
     await axios.post(
       "http://127.0.0.1:8000/verify",
       {
-        nonce: params.message,
+        nonce: nonce,
         signature: signature,
         address: signer.getAddress(),
       },
@@ -77,13 +80,21 @@ export const Main = () => {
             <Form.Label>Text to sign</Form.Label>
             <Form.Control
               as="textarea"
-              defaultValue="Message to sign"
               id="message"
               rows={3}
-            ></Form.Control>
+              onChange={(e) => setMessage(e.target.value)}
+            >
+              {message}
+            </Form.Control>
           </Form.Group>
           <Form.Group>
-            <Button variant="primary" onClick={sign} disabled={account == null}>
+            <Button
+              variant="primary"
+              onClick={async (e) => {
+                await sign(message);
+              }}
+              disabled={account == null}
+            >
               Sign
             </Button>
           </Form.Group>
