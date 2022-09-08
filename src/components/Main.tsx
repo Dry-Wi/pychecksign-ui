@@ -1,4 +1,4 @@
-import { Button, Form } from "react-bootstrap";
+import { Button, Form, Alert } from "react-bootstrap";
 import Container from "react-bootstrap/Container";
 import Navbar from "react-bootstrap/Navbar";
 import { useEffect, useState } from "react";
@@ -9,6 +9,7 @@ export const Main = () => {
   const [isWalletInstalled, setIsWalletInstalled] = useState<boolean>(false);
   const [account, setAccount] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("Message to sign");
+  const [verification, setVerification] = useState<boolean>(true);
 
   useEffect(() => {
     if ((window as any).ethereum) {
@@ -22,14 +23,20 @@ export const Main = () => {
     );
 
     const signer = provider.getSigner();
+
+    //const address = await signer.getAddress();
+    if (!account) {
+      throw new Error("No account is connected");
+    }
+    const address = ethers.utils.getAddress(account);
     const signature = await signer.signMessage(nonce);
 
-    await axios.post(
+    const verification = await axios.post(
       "http://127.0.0.1:8000/verify",
       {
         nonce: nonce,
         signature: signature,
-        address: signer.getAddress(),
+        address: address,
       },
       {
         headers: {
@@ -38,6 +45,23 @@ export const Main = () => {
         },
       }
     );
+    setVerification(verification.data["verify_result"]);
+  }
+
+  function AlertVerificationResult() {
+    if (!verification) {
+      return (
+        <Alert
+          variant="danger"
+          onClose={() => setVerification(true)}
+          dismissible
+        >
+          <Alert.Heading>Oh snap! Signature is not correct</Alert.Heading>
+          <p>Based on the date the signer is not the correct one</p>
+        </Alert>
+      );
+    }
+    return <div></div>;
   }
 
   async function connectWallet(): Promise<void> {
@@ -99,6 +123,7 @@ export const Main = () => {
             </Button>
           </Form.Group>
         </Form>
+        <AlertVerificationResult />
       </Container>
     </>
   );
